@@ -1,9 +1,0 @@
-###### codici di R ######
-
-i codici sono riportati in questo foglio condiviso, in modalità lettura:
-
-
-https://docs.google.com/document/d/1np8ztSpyaRtepNhetEZx1jUwkskBDI0y9bplHUiD8BQ/edit?usp=sharing
-
-
-per utilizzarli, copiateli ed incollateli nella vostra versione di R Studio
