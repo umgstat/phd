@@ -1,0 +1,138 @@
+
+
+
+roma = read.csv(file.choose(), header = TRUE, sep = ";")
+attach(roma)
+
+tail(roma)
+str(roma)
+
+Histology = factor(Histology)
+
+
+relazione = Histology ~ logHE4 + logCA125
+modello = lm(relazione)
+summary(modello)
+
+
+
+
+modello = glm(relazione, family = binomial)
+summary(modello)
+
+
+predlin = -15.46 + 2.77 * logHE4 + 0.63 * logCA125
+
+
+plot(predlin, Histology) # benino
+
+plot(predlin, as.numeric(Histology)-1) # molto bene
+
+probabilita = exp(predlin) / (1 + exp(predlin))
+
+xx = seq(-5, 10, by = 0.1)
+pl = -15.46 + 2.77 * xx + 0.63 * xx
+pr = exp(pl) / (1 + exp(pl))
+points(xx, pr, col = "red", pch = 20)
+
+
+? pch
+
+
+########  passiamo alle misure ripetute
+
+
+
+## 
+
+
+
+
+tipodiflusso = read.csv(file.choose(), header = TRUE)
+attach(tipodiflusso)
+tail(tipodiflusso)
+str(tipodiflusso)
+names(tipodiflusso)
+
+
+
+Exercise = factor(exercise)
+levels(Exercise) = c("first", "second")
+Flow = c(preflow, postflow)
+Patient = c(id, id)
+T1 = rep(1, length(preflow))
+T2 = rep(2, length(postflow))
+Time = c(T1, T2)
+Long = data.frame(Patient, Exercise, Time, Flow)
+
+
+
+
+
+
+## un disegno iniziale
+par(mfrow = c(1,2))
+set.seed(987)
+noise = .3*runif(20)
+displ = runif(20, min = 0.5, max = 0.95)
+flow1 = c(preflow[exercise == 1] + noise, postflow[exercise == 1] + noise)
+plot(Time[exercise == 1], flow1, main = "Exercise 1",
+     xaxt = "n", yaxt = "n", xlab = "", ylab = "", xlim = c(.5, 2))
+for(i in 1:20)
+{lines(c(1,2),c(flow1[i], flow1[i+20]), col = i, lty = i )
+  text(displ[i], flow1[i], id[i], col = i)}
+flow2 = c(preflow[exercise == 2] + noise, postflow[exercise == 2] + noise)
+plot(Time[exercise == 2], flow2, main = "Exercise 2",
+     xaxt = "n", yaxt = "n", xlab = "", ylab = "flow", xlim = c(.5, 2))
+for(i in 1:20)
+{lines(c(1,2),c(flow2[i], flow2[i+20]), col = i, lty = i )
+  text(displ[i], flow1[i], id[i+20], col = i)}
+
+
+
+# Patient, Exercise, Time, Flow
+
+relaz =  Flow  ~ Exercise * Time  + ( 1 |  Patient)
+
+
+library(lme4)
+
+
+model1 = glmer(Flow ~ Exercise * Time + (1 | Patient), family = binomial, data = Long)
+summary(model1)
+
+
+
+model1
+
+seqtime = seq(0,3,.05)
+linpredict1 = 1.971 - 1.963 * seqtime
+logist1 = exp(linpredict1)/(1+ exp(linpredict1))
+linpredict2 = 1.971 - 4.154 + (3.428 - 1.963) * seqtime
+logist2 = exp(linpredict2)/(1+ exp(linpredict2))
+
+
+## un disegno finale
+par(mfrow = c(1,2))
+set.seed(987)
+noise = .3*runif(20)
+displ = runif(20, min = 0.5, max = 0.95)
+flow1 = c(preflow[exercise == 1] + noise, postflow[exercise == 1] + noise)
+plot(Time[exercise == 1], flow1, main = "Exercise 1",
+     xaxt = "n", yaxt = "n", xlab = "", ylab = "", xlim = c(0, 3))
+for(i in 1:20)
+{lines(c(1,2),c(flow1[i], flow1[i+20]), col = i, lty = i )
+  text(displ[i], flow1[i], id[i], col = i)}
+lines(seqtime, logist1, lwd = 5, col = "gray", lty = 2)
+flow2 = c(preflow[exercise == 2] + noise, postflow[exercise == 2] + noise)
+plot(Time[exercise == 2], flow2, main = "Exercise 2",
+     xaxt = "n", yaxt = "n", xlab = "", ylab = "flow", xlim = c(0, 3))
+for(i in 1:20)
+{lines(c(1,2),c(flow2[i], flow2[i+20]), col = i, lty = i )
+  text(displ[i], flow1[i], id[i+20], col = i)}
+lines(seqtime, logist2, lwd = 5, col = "gray", lty = 2)
+
+
+
+
+
