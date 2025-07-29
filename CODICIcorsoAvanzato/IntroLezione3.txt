@@ -1,0 +1,39 @@
+
+# % # % # % # % # % # % # % # % # % # % # % # % # % # % # %
+# %
+# %  per iniziare facilmente ..
+# % 
+# % # % # % # % # % # % # % # % # % # % # % # % # % # % # %
+
+
+percussive = read.table(file.choose(), header = TRUE)
+attach(percussive)
+head(percussive)
+str(percussive)
+table(subject)
+table(treatment)
+table(time)
+time = time - 12
+treatment = factor(treatment)
+
+
+treatment1 = treatment[1:70]
+levels(treatment)[1] = "hfpv"
+levels(treatment)[2] = "control"
+
+library(lattice)
+
+xyplot(pafi ~ time | treatment, type = "b", groups = subject,
+       xlab = "time (hour)", ylab = expression(PaO[2] / FiO[2]))
+
+
+
+ancovasbagliatocross = lm(pafi ~ time * treatment)
+summary(ancovasbagliatocross)
+
+ancovasbagliatoplus = lm(pafi ~ time + treatment)
+summary(ancovasbagliatoplus)
+
+AIC(ancovasbagliatocross, ancovasbagliatoplus)
+
+######## analisi appropriata #######
