@@ -1,0 +1,80 @@
+
+# Apre la finestra di selezione e importa il dataset
+
+cgma1c = read.csv(file.choose(), header = TRUE)
+
+# Guarda le prime righe del dataset importato
+
+head(cgma1c)
+
+tail(cgma1c)
+
+str(cgma1c)
+
+cgma1c$CGM
+
+
+attach(cgma1c)
+
+
+plot( CGM , A1C )
+
+
+relazione = A1C ~ CGM
+
+plot(relazione)
+
+
+modello = lm(relazione)
+
+plot(relazione)
+abline(modello)
+
+
+summary(modello)
+
+
+########
+
+
+
+diabete = read.csv(file.choose(), header = TRUE)
+
+head(diabete)
+attach(diabete)
+relazione1 = response ~ serumprotein
+
+
+modello1 = lm(relazione1)
+
+plot(relazione1)
+abline(modello1)
+points(serumprotein[group == "black"] , response[group == "black"], col = "blue")
+
+plot(relazione1)
+abline(modello1)
+
+points(serumprotein[group == "black"], response[group == "black"],
+       pch = 21,          # Cerchio con bordo e riempimento separati
+       col = "black",     # Colore del bordo (nero)
+       bg = "black",      # Colore del riempimento interno (nero)
+       cex = 2,           # Dimensione del pallino (ingrandito)
+       lwd = 2.5)         # Spessore del bordo esterno
+
+
+
+relazione2 = response ~ serumprotein + group
+modello2 = lm(relazione2)
+summary(modello2)
+
+
+AIC(modello1, modello2)
+
+relazione3 = response ~  group
+modello3 = lm(relazione3)
+summary(modello3)
+
+AIC(modello1, modello2, modello3)
+
+
+
