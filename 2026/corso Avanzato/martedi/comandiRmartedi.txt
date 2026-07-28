@@ -1,0 +1,55 @@
+
+
+
+
+www = "https://raw.githubusercontent.com/umgstat/phd/refs/heads/main/DATASET/percussive.txt"
+percussive = read.table(www, header = TRUE)
+attach(percussive)
+
+table(subject)
+table(treatment)
+table(time)
+time = time - 12
+treatment = factor(treatment)
+
+treatment1 = treatment[1:70]
+levels(treatment)[1] = "hfpv"
+levels(treatment)[2] = "control"
+
+
+library(lattice)
+
+xyplot(pafi ~ time | treatment, type = "b", groups = subject,
+       xlab = "time (hour)", ylab = expression(PaO[2] / FiO[2]))
+
+head(percussive)
+
+
+relsb = pafi ~ treatment * time 
+
+modelsb = lm(relsb)
+summary(modelsb)
+
+
+
+
+library(lme4)
+
+
+rel1 = pafi ~ treatment * time +  ( 1 |  subject  )
+
+mixedmodel1 = lmer(rel1)
+summary(mixedmodel1)
+
+
+
+
+rel2 = pafi ~ treatment * time +  ( time |  subject  )
+
+mixedmodel2 = lmer(rel2)
+summary(mixedmodel2)
+
+
+
+
+
