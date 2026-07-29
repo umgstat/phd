@@ -1,0 +1,157 @@
+
+
+### ecco il codice utilizzato per l'analisi:
+
+# ==============================================================================
+# ESERCITAZIONE PRATICA: Analisi Mista e Longitudinale MTT (lme4)
+# ==============================================================================
+
+# Caricamento dei pacchetti richiesti
+if (!require("tidyverse")) install.packages("tidyverse")
+if (!require("lme4")) install.packages("lme4")
+if (!require("emmeans")) install.packages("emmeans")
+
+library(tidyverse)
+library(lme4)
+library(emmeans)
+
+# ------------------------------------------------------------------------------
+# TASK 1: Importazione del Dataset con file.choose() e Data Wrangling
+# ------------------------------------------------------------------------------
+cat("Seleziona il file del dataset (es. mttbyel.csv) dalla finestra che si apre...\n")
+
+# Apertura della finestra di selezione del file
+file_path <- file.choose()
+
+# Importazione del file CSV selezionato
+data <- read.csv(file_path, stringsAsFactors = FALSE)
+
+# Gestione della virgola decimale (nel caso il file provenga da Excel italiano)
+if ("Absorbance" %in% names(data) && is.character(data$Absorbance)) {
+  data$Absorbance <- as.numeric(gsub(",", ".", data$Absorbance))
+}
+
+# Conversione delle variabili in fattori e impostazione di "SCR" come livello di riferimento
+data <- data %>%
+  mutate(
+    Cell_Line      = factor(Cell_Line),
+    Condition      = factor(Condition),
+    # Impostiamo la condizione di controllo "SCR" come reference
+    Condition      = relevel(Condition, ref = "SCR"),
+    ID_Traiettoria = factor(ID_Traiettoria),
+    # Variabile temporale espressa sia come continua (Time_h) che come fattore (Time_f)
+    Time_f         = factor(Time_h)
+  )
+
+# Controllo della struttura del dataset caricato
+str(data)
+summary(data)
+
+
+# ------------------------------------------------------------------------------
+# TASK 2: Analisi Esplorativa e Grafico delle Curve di Proliferazione (ggplot2)
+# ------------------------------------------------------------------------------
+
+# Calcolo di medie e deviazioni standard per condizione e punto temporale
+data_summary <- data %>%
+  group_by(Cell_Line, Condition, Time_h) %>%
+  summarize(
+    mean_abs = mean(Absorbance, na.rm = TRUE),
+    sd_abs   = sd(Absorbance, na.rm = TRUE),
+    .groups  = "drop"
+  )
+
+# Grafico con facet per ciascuna Cell_Line
+ggplot() +
+  # Traiettorie individuali per ogni pozzetto/replica
+  geom_line(
+    data = data,
+    aes(x = Time_h, y = Absorbance, group = ID_Traiettoria, color = Condition),
+    alpha = 0.35, size = 0.6
+  ) +
+  geom_point(
+    data = data,
+    aes(x = Time_h, y = Absorbance, color = Condition),
+    alpha = 0.4, size = 1.5
+  ) +
+  # Curve medie per ciascuna condizione sperimentale
+  geom_line(
+    data = data_summary,
+    aes(x = Time_h, y = mean_abs, color = Condition, group = Condition),
+    size = 1.3
+  ) +
+  geom_point(
+    data = data_summary,
+    aes(x = Time_h, y = mean_abs, color = Condition),
+    size = 3
+  ) +
+  # Sfaccettatura per linea cellulare
+  facet_wrap(~ Cell_Line, ncol = 2) +
+  scale_x_continuous(breaks = c(0, 24, 48, 72, 96)) +
+  scale_color_brewer(palette = "Set1") +
+  theme_bw(base_size = 14) +
+  theme(
+    legend.position = "bottom",
+    panel.grid.minor = element_blank(),
+    strip.background = element_rect(fill = "gray92", color = "black"),
+    strip.text = element_text(face = "bold")
+  ) +
+  labs(
+    title = "Saggio MTT: Proliferazione Cellulare Longitudinale",
+    subtitle = "Linee sottili = replicati individuali | Linee spesse = medie di gruppo",
+    x = "Tempo (ore)",
+    y = "Assorbanza (OD 570 nm)",
+    color = "Condizione:"
+  )
+
+
+# ------------------------------------------------------------------------------
+# TASK 3 & 4: Griglia di Modelli lmer, Confronto AIC e Likelihood Ratio Test
+# ------------------------------------------------------------------------------
+
+# Stima dei modelli con REML = FALSE per confrontare le strutture di effetti fissi
+# Modello M0: Effetto additivo principale + intercetta casuale per traiettoria
+M0 <- lmer(Absorbance ~ Time_h + Cell_Line + Condition + (1 | ID_Traiettoria),
+           data = data, REML = FALSE)
+
+# Modello M1: Interazione Condizione x Tempo
+M1 <- lmer(Absorbance ~ Time_h * Condition + Cell_Line + (1 | ID_Traiettoria),
+           data = data, REML = FALSE)
+
+# Modello M2: Interazione Tripla Cell_Line x Condition x Time_h
+M2 <- lmer(Absorbance ~ Time_h * Condition * Cell_Line + (1 | ID_Traiettoria),
+           data = data, REML = FALSE)
+
+# Modello M3: Random Slope del Tempo per Traiettoria
+M3 <- lmer(Absorbance ~ Time_h * Condition * Cell_Line + (1 + Time_h | ID_Traiettoria),
+           data = data, REML = FALSE)
+
+# --- Confronto dei Modelli (Likelihood Ratio Test e AIC) ---
+model_anova <- anova(M0, M1, M2, M3)
+print(model_anova)
+
+# Calcolo esplicito del Delta AIC rispetto al modello migliore
+aic_table <- AIC(M0, M1, M2, M3)
+aic_table$deltaAIC <- aic_table$AIC - min(aic_table$AIC)
+print(aic_table)
+
+
+# ------------------------------------------------------------------------------
+# RI-STIMA DEL MODELLO OTTIMALE CON REML = TRUE ED EMMEANS
+# ------------------------------------------------------------------------------
+
+# Ri-stima del modello selezionato con REML = TRUE per la stima finale dei parametri
+best_model <- lmer(Absorbance ~ Time_h * Condition * Cell_Line + (1 | ID_Traiettoria),
+                   data = data, REML = TRUE)
+
+summary(best_model)
+
+# --- Analisi Post-Hoc dei Tassi di Crescita (Slopes) con emmeans ---
+slopes <- emtrends(best_model, ~ Condition | Cell_Line, var = "Time_h")
+print(slopes)
+
+# Confronto dei tassi di crescita rispetto alla condizione di controllo SCR
+contrast_slopes <- contrast(slopes, method = "dunnett")
+print(contrast_slopes)
+
+
